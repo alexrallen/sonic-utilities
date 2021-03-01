@@ -28,6 +28,19 @@ try:
 except KeyError:
     pass
 
+# Standard Port-Level Counters
+std_port_rx_counters = ['SAI_PORT_STAT_IF_IN_ERRORS', 'SAI_PORT_STAT_IF_IN_DISCARDS']
+std_port_tx_counters = ['SAI_PORT_STAT_IF_OUT_ERRORS', 'SAI_PORT_STAT_IF_OUT_DISCARDS']
+
+# Standard Port-Level Headers
+std_port_headers_map = {
+    'RX_ERR':   'SAI_PORT_STAT_IF_IN_ERRORS',
+    'RX_DROPS': 'SAI_PORT_STAT_IF_IN_DISCARDS',
+    'TX_ERR':   'SAI_PORT_STAT_IF_OUT_ERRORS',
+    'TX_DROPS': 'SAI_PORT_STAT_IF_OUT_DISCARDS',
+    'TX_OK':    'SAI_PORT_STAT_ETHER_STATS_TX_NO_ERRORS'
+}
+
 # CONFIG_DB Tables
 DEBUG_COUNTER_CONFIG_TABLE = 'DEBUG_COUNTER'
 DROP_REASON_CONFIG_TABLE = 'DEBUG_COUNTER_DROP_REASON'
@@ -40,6 +53,8 @@ drop_counter_config_header = ['Counter',
                               'Alias',
                               'Group',
                               'Type',
+                              'Threshold',
+                              'Timeout',
                               'Reasons',
                               'Description']
 drop_counter_capability_header = ['Counter Type', 'Total']
@@ -58,6 +73,9 @@ class DropConfig(object):
         self.state_db = swsssdk.SonicV2Connector(host='127.0.0.1')
         self.state_db.connect(self.state_db.STATE_DB)
 
+        self.counters_db = swsssdk.SonicV2Connector(host='127.0.0.1')
+        self.counters_db.connect(self.counters_db.COUNTERS_DB)
+
     # -c show_config
     def print_counter_config(self, group):
         """
@@ -71,6 +89,8 @@ class DropConfig(object):
                           counter.get('alias', ''),
                           counter.get('group', ''),
                           counter.get('type', ''),
+                          counter.get('threshold', ''),
+                          counter.get('timeout', ''),
                           counter.get('reason', ''),
                           counter.get('description', '')))
 
@@ -106,7 +126,7 @@ class DropConfig(object):
                     print('\t{}'.format(reason))
 
     def create_counter(self, counter_name, alias, group, counter_type,
-                       description, reasons):
+                       threshold, timeout, description, reasons):
         """
             Creates a new counter configuration
         """
@@ -120,7 +140,7 @@ class DropConfig(object):
         if not reasons:
             raise InvalidArgumentError('No drop reasons provided')
 
-        if self.counter_name_in_use(counter_name):
+        if self.counter_name_in_use(counter_name) or counter_name in std_port_headers_map.keys():
             raise InvalidArgumentError('Counter name \'{}\' already in use'.format(counter_name))
 
         available_counters = self.get_available_counters(counter_type)
@@ -144,6 +164,10 @@ class DropConfig(object):
             drop_counter_entry['alias'] = alias
         if group:
             drop_counter_entry['group'] = group
+        if threshold:
+            drop_counter_entry['threshold'] = threshold
+        if timeout:
+            drop_counter_entry['timeout'] = timeout
         if description or description == '':
             drop_counter_entry['desc'] = description
 
@@ -212,6 +236,66 @@ class DropConfig(object):
         for reason in reasons:
             self.config_db.set_entry(DROP_REASON_CONFIG_TABLE, (counter_name, reason), None)
 
+    def set_threshold(self, counter_name, threshold):
+        """
+           Set a threshold for which the counter will set the port to NOT OK state.
+        """
+
+        if not counter_name:
+            raise InvalidArgumentError('No counter name provided')
+
+        try:
+            int(threshold)
+        except ValueError:
+            raise InvalidArgumentError('Threshold is invalid integer.')
+
+        if int(threshold) < 0:
+            raise InvalidArgumentError('Threshold must be nonnegative.')
+
+        if not (self.counter_name_in_use(counter_name) or counter_name in std_port_headers_map.keys()):
+            raise InvalidArgumentError('Counter \'{}\' not found'.format(counter_name))
+
+        counter_attributes = self.config_db.get_entry(DEBUG_COUNTER_CONFIG_TABLE, counter_name)
+        
+        if not threshold:
+            counter_attributes.pop('threshold', None)
+        else:
+            counter_attributes.update({'threshold': threshold})
+
+        self.config_db.set_entry(DEBUG_COUNTER_CONFIG_TABLE,
+                                 counter_name,
+                                 counter_attributes)
+
+    def set_timeout(self, counter_name, timeout):
+        """
+           Set a timeout for the counter after which it will reset to zero.
+        """
+
+        if not counter_name:
+            raise InvalidArgumentError('No counter name provided')
+
+        try:
+            float(timeout)
+        except ValueError:
+            raise InvalidArgumentError('Timeout is invalid floating point number.')
+
+        if float(timeout) <= 0:
+            raise InvalidArgumentError('Timeout must be a positive number.')
+
+        if not (self.counter_name_in_use(counter_name) or counter_name in std_port_headers_map.keys()):
+            raise InvalidArgumentError('Counter \'{}\' not found'.format(counter_name))
+        
+        counter_attributes = self.config_db.get_entry(DEBUG_COUNTER_CONFIG_TABLE, counter_name)
+        
+        if not timeout:
+            counter_attributes.pop('timeout', None)
+        else:
+            counter_attributes.update({'timeout': timeout})
+
+        self.config_db.set_entry(DEBUG_COUNTER_CONFIG_TABLE,
+                                 counter_name,
+                                 counter_attributes)
+
     def get_config(self, group):
         """
             Get the current counter configuration from CONFIG_DB
@@ -227,6 +311,8 @@ class DropConfig(object):
                 'alias':       counter_attributes.get('alias', counter_name),
                 'group':       counter_attributes.get('group', 'N/A'),
                 'type':        counter_attributes.get('type', 'N/A'),
+                'threshold':   counter_attributes.get('threshold', 'N/A'),
+                'timeout':     counter_attributes.get('timeout', 'N/A'),
                 'description': counter_attributes.get('desc', 'N/A')
             }
 
@@ -339,12 +425,14 @@ Examples:
     parser.add_argument('-c', '--command', type=str, help='Desired action to perform')
 
     # Variables
-    parser.add_argument('-n', '--name',    type=str, help='The name of the target drop counter',                   default=None)
-    parser.add_argument('-a', '--alias',   type=str, help='The alias of the target drop counter',                  default=None)
-    parser.add_argument('-g', '--group',   type=str, help='The group of the target drop counter',                  default=None)
-    parser.add_argument('-t', '--type',    type=str, help='The type of the target drop counter',                   default=None)
-    parser.add_argument('-d', '--desc',    type=str, help='The description for the target drop counter',           default=None)
-    parser.add_argument('-r', '--reasons', type=str, help='The list of drop reasons for the target drop counter',  default=None)
+    parser.add_argument('-n', '--name',      type=str, help='The name of the target drop counter',                   default=None)
+    parser.add_argument('-a', '--alias',     type=str, help='The alias of the target drop counter',                  default=None)
+    parser.add_argument('-g', '--group',     type=str, help='The group of the target drop counter',                  default=None)
+    parser.add_argument('-t', '--type',      type=str, help='The type of the target drop counter',                   default=None)
+    parser.add_argument(      '--threshold', type=str, help='The alarm threshold of the target drop counter',        default=None)
+    parser.add_argument(      '--timeout',   type=str, help='The time to live of each count of the target',          default=None)
+    parser.add_argument('-d', '--desc',      type=str, help='The description for the target drop counter',           default=None)
+    parser.add_argument('-r', '--reasons',   type=str, help='The list of drop reasons for the target drop counter',  default=None)
 
     args = parser.parse_args()
 
@@ -354,6 +442,8 @@ Examples:
     alias = args.alias
     group = args.group
     counter_type = args.type
+    threshold = args.threshold
+    timeout = args.timeout
     description = args.desc
     drop_reasons = args.reasons
 
@@ -367,6 +457,8 @@ Examples:
                                    alias,
                                    group,
                                    counter_type,
+                                   threshold,
+                                   timeout,
                                    description,
                                    reasons)
         except InvalidArgumentError as err:
@@ -389,6 +481,18 @@ Examples:
             dconfig.remove_reasons(name, reasons)
         except InvalidArgumentError as err:
             print('Encountered error trying to remove reasons: {}'.format(err.message))
+            exit(1)
+    elif command == 'threshold':
+        try:
+            dconfig.set_threshold(name, threshold)
+        except InvalidArgumentError as err:
+            print('Encountered error trying to set threshold: {}'.format(err.message))
+            exit(1)
+    elif command == 'timeout':
+        try:
+            dconfig.set_timeout(name, timeout)
+        except InvalidArgumentError as err:
+            print('Encountered error trying to set timeout: {}'.format(err.message))
             exit(1)
     elif command == 'show_config':
         dconfig.print_counter_config(group)

@@ -2662,11 +2662,13 @@ def dropcounters():
 @click.argument("counter_name", type=str, required=True)
 @click.argument("counter_type", type=str, required=True)
 @click.argument("reasons",      type=str, required=True)
-@click.option("-a", "--alias", type=str, help="Alias for this counter")
-@click.option("-g", "--group", type=str, help="Group for this counter")
-@click.option("-d", "--desc",  type=str, help="Description for this counter")
+@click.option("-a", "--alias",     type=str, help="Alias for this counter")
+@click.option("-g", "--group",     type=str, help="Group for this counter")
+@click.option(      "--threshold", type=str, help="Threshold for this counter")
+@click.option(      "--timeout",   type=str, help="Timeout for this counter")
+@click.option("-d", "--desc",      type=str, help="Description for this counter")
 @click.option('-v', '--verbose', is_flag=True, help="Enable verbose output")
-def install(counter_name, alias, group, counter_type, desc, reasons, verbose):
+def install(counter_name, alias, group, counter_type, threshold, timeout, desc, reasons, verbose):
     """Install a new drop counter"""
     command = "dropconfig -c install -n '{}' -t '{}' -r '{}'".format(counter_name, counter_type, reasons)
     if alias:
@@ -2675,6 +2677,10 @@ def install(counter_name, alias, group, counter_type, desc, reasons, verbose):
         command += " -g '{}'".format(group)
     if desc:
         command += " -d '{}'".format(desc)
+    if threshold:
+        command += " --threshold '{}'".format(threshold)
+    if timeout:
+        command += " --timeout '{}'".format(timeout)
 
     run_command(command, display_cmd=verbose)
 
@@ -2714,6 +2720,32 @@ def add_reasons(counter_name, reasons, verbose):
 def remove_reasons(counter_name, reasons, verbose):
     """Remove reasons from an existing drop counter"""
     command = "dropconfig -c remove -n {} -r {}".format(counter_name, reasons)
+    run_command(command, display_cmd=verbose)
+
+
+#
+# 'set_threshold' subcommand ('config dropcounters set_threshold')
+#
+@dropcounters.command('set-threshold')
+@click.argument("counter_name", type=str, required=True)
+@click.argument("threshold",    type=str, required=True)
+@click.option('-v', '--verbose', is_flag=True, help="Enable verbose output")
+def add_reasons(counter_name, threshold, verbose):
+    """Add reasons to an existing drop counter"""
+    command = "dropconfig -c threshold -n {} --threshold {}".format(counter_name, threshold)
+    run_command(command, display_cmd=verbose)
+
+
+#
+# 'set_timeout' subcommand ('config dropcounters set_timeout')
+#
+@dropcounters.command('set-timeout')
+@click.argument("counter_name", type=str, required=True)
+@click.argument("timeout",    type=str, required=True)
+@click.option('-v', '--verbose', is_flag=True, help="Enable verbose output")
+def add_reasons(counter_name, timeout, verbose):
+    """Add reasons to an existing drop counter"""
+    command = "dropconfig -c timeout -n {} --timeout {}".format(counter_name, timeout)
     run_command(command, display_cmd=verbose)
 
 
