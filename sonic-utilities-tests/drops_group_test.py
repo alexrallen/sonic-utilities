@@ -30,17 +30,17 @@ SWITCH_EGRESS_DROPS
 	L3_ANY
 """
 
-expected_counter_configuration = """Counter            Alias              Group         Type                 Reasons    Description
------------------  -----------------  ------------  -------------------  ---------  --------------------------------------------------
-DEBUG_0            DEBUG_0            N/A           PORT_INGRESS_DROPS   None       N/A
-DEBUG_1            SWITCH_DROPS       PACKET_DROPS  SWITCH_EGRESS_DROPS  None       Outgoing packet drops, tracked at the switch level
-DEBUG_2            DEBUG_2            N/A           PORT_INGRESS_DROPS   None
-lowercase_counter  lowercase_counter  N/A           SWITCH_EGRESS_DROPS  None       N/A
+expected_counter_configuration = """Counter            Alias              Group         Type                 Threshold    Timeout    Reasons    Description
+-----------------  -----------------  ------------  -------------------  -----------  ---------  ---------  --------------------------------------------------
+DEBUG_0            DEBUG_0            N/A           PORT_INGRESS_DROPS   N/A          N/A        None       N/A
+DEBUG_1            SWITCH_DROPS       PACKET_DROPS  SWITCH_EGRESS_DROPS  N/A          N/A        None       Outgoing packet drops, tracked at the switch level
+DEBUG_2            DEBUG_2            N/A           PORT_INGRESS_DROPS   N/A          N/A        None
+lowercase_counter  lowercase_counter  N/A           SWITCH_EGRESS_DROPS  N/A          N/A        None       N/A
 """
 
-expected_counter_configuration_with_group = """Counter    Alias         Group         Type                 Reasons    Description
----------  ------------  ------------  -------------------  ---------  --------------------------------------------------
-DEBUG_1    SWITCH_DROPS  PACKET_DROPS  SWITCH_EGRESS_DROPS  None       Outgoing packet drops, tracked at the switch level
+expected_counter_configuration_with_group = """Counter    Alias         Group         Type                 Threshold    Timeout    Reasons    Description
+---------  ------------  ------------  -------------------  -----------  ---------  ---------  --------------------------------------------------
+DEBUG_1    SWITCH_DROPS  PACKET_DROPS  SWITCH_EGRESS_DROPS  N/A          N/A        None       Outgoing packet drops, tracked at the switch level
 """
 
 expected_counts = """    IFACE    STATE    RX_ERR    RX_DROPS    TX_ERR    TX_DROPS    DEBUG_2    DEBUG_0
@@ -97,15 +97,13 @@ class TestDropCounters(object):
         result = runner.invoke(show.cli.commands["dropcounters"].commands["configuration"], [])
         print(result.output)
         assert True
-        #TODO: Alexander Allen
-        #assert result.output == expected_counter_configuration
+        assert result.output == expected_counter_configuration
 
     def test_show_configuration_with_group(self):
         runner = CliRunner()
         result = runner.invoke(show.cli.commands["dropcounters"].commands["configuration"], ["-g", "PACKET_DROPS"])
         print(result.output)
-        assert True
-        #assert result.output == expected_counter_configuration_with_group
+        assert result.output == expected_counter_configuration_with_group
 
     def test_show_counts(self):
         runner = CliRunner()

@@ -27,9 +27,9 @@ class TestIntfutil(TestCase):
         result = self.runner.invoke(show.cli.commands["interfaces"].commands["status"], [])
         print >> sys.stderr, result.output
         expected_output = (
-              "Interface    Lanes    Speed    MTU    FEC      Alias    Vlan    Oper    Admin             Type    Asym PFC\n"
-            "-----------  -------  -------  -----  -----  ---------  ------  ------  -------  ---------------  ----------\n"
-            "  Ethernet0        0      25G   9100     rs  Ethernet0  routed    down       up  QSFP28 or later         off"
+              "Interface    Lanes    Speed    MTU    FEC      Alias    Vlan    Oper    Admin             Type    Asym PFC    Alarm\n"
+            "-----------  -------  -------  -----  -----  ---------  ------  ------  -------  ---------------  ----------  -------\n"
+            "  Ethernet0        0      25G   9100     rs  Ethernet0  routed    down       up  QSFP28 or later         off      N/A"
         )
         self.assertEqual(result.output.strip(), expected_output)
 
@@ -52,9 +52,9 @@ class TestIntfutil(TestCase):
         result = self.runner.invoke(show.cli.commands["subinterfaces"].commands["status"], [])
         print >> sys.stderr, result.output
         expected_output = (
-            "Sub port interface    Speed    MTU    Vlan    Admin                  Type\n"
-          "--------------------  -------  -----  ------  -------  --------------------\n"
-          "        Ethernet0.10      25G   9100      10       up  802.1q-encapsulation"
+           "Sub port interface    Speed    MTU    Vlan    Admin                  Type    Alarm\n"
+         "--------------------  -------  -----  ------  -------  --------------------  -------\n"
+         "        Ethernet0.10      25G   9100      10       up  802.1q-encapsulation      N/A"
         )
         self.assertEqual(result.output.strip(), expected_output)
 
@@ -77,9 +77,9 @@ class TestIntfutil(TestCase):
         result = self.runner.invoke(show.cli.commands["subinterfaces"].commands["status"], ["Ethernet0.10"])
         print >> sys.stderr, result.output
         expected_output = (
-            "Sub port interface    Speed    MTU    Vlan    Admin                  Type\n"
-          "--------------------  -------  -----  ------  -------  --------------------\n"
-          "        Ethernet0.10      25G   9100      10       up  802.1q-encapsulation"
+            "Sub port interface    Speed    MTU    Vlan    Admin                  Type    Alarm\n"
+          "--------------------  -------  -----  ------  -------  --------------------  -------\n"
+          "        Ethernet0.10      25G   9100      10       up  802.1q-encapsulation      N/A"
         )
         self.assertEqual(result.output.strip(), expected_output)
 
@@ -103,9 +103,9 @@ class TestIntfutil(TestCase):
         result = self.runner.invoke(show.cli.commands["subinterfaces"].commands["status"], ["etp1.10"])
         print >> sys.stderr, result.output
         expected_output = (
-            "Sub port interface    Speed    MTU    Vlan    Admin                  Type\n"
-          "--------------------  -------  -----  ------  -------  --------------------\n"
-          "        Ethernet0.10      25G   9100      10       up  802.1q-encapsulation"
+            "Sub port interface    Speed    MTU    Vlan    Admin                  Type    Alarm\n"
+          "--------------------  -------  -----  ------  -------  --------------------  -------\n"
+          "        Ethernet0.10      25G   9100      10       up  802.1q-encapsulation      N/A"
         )
         self.assertEqual(result.output.strip(), expected_output)
 
