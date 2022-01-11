@@ -132,7 +132,7 @@ class InterfaceAliasConverter(object):
 
         if not self.port_dict:
             if not device_info.is_supervisor():
-                click.echo(message="Configuration database contains no ports")
+                click.echo(message="Configuration database contains no ports", err=True)
             self.port_dict = {}
 
         for port_name in self.port_dict:
