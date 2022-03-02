@@ -438,7 +438,7 @@ class ConfigMgmtDPB(ConfigMgmt):
 
             # Save Port OIDs Mapping Before Deleting Port
             dataBase = SonicV2Connector(host="127.0.0.1")
-            if_name_map, if_oid_map = port_util.get_interface_oid_map(dataBase)
+            if_name_map, if_oid_map = self._get_interface_oid_map(dataBase)
             self.sysLog(syslog.LOG_DEBUG, 'if_name_map {}'.format(if_name_map))
 
             # If we are here, then get ready to update the Config DB as below:
@@ -458,6 +458,21 @@ class ConfigMgmtDPB(ConfigMgmt):
             return None, False
 
         return None, True
+
+    def _get_interface_iod_map(db):
+        TABLE_KEY = "ASIC_STATE:SAI_OBJECT_TYPE_HOSTIF:oid:*"
+        IF_NAME = "SAI_HOSTIF_ATTR_NAME"
+        IF_OID = "SAI_HOSTIF_ATTR_OBJ_ID"
+
+        db.connect(db.ASIC_DB)
+
+        ifmap = {}
+
+        for key in db.keys(db.ASIC_DB, TABLE_KEY):
+            data = db.get_all(db.ASIC_DB, key)
+            ifmap[data[IF_NAME]] = data[IF_OID]
+
+        return ifmap
 
     def _deletePorts(self, ports=list(), force=False):
         '''
