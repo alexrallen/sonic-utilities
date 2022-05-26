@@ -25,6 +25,15 @@ class Crm:
             self.config_db = self.cfgdb
         self.config_db.mod_entry("CRM", 'Config', {attr: val})
 
+    @multi_asic_util.run_on_multi_asic
+    def get(self, attr):
+        """
+        CRM handler to get specified attribute
+        """
+        if self.cfgdb:
+            self.config_db = self.cfgdb
+        return self.config_db.get_entry('CRM', 'Config').get(attr, None)
+
     def show_summary(self):
         """
         CRM Handler to display general information.
@@ -314,9 +323,17 @@ def low(ctx, value):
     if ctx.obj["crm"].addr_family != None:
         attr += ctx.obj["crm"].addr_family + '_'
 
-    attr += ctx.obj["crm"].res_type + '_' + 'low_threshold'
+    attr += ctx.obj["crm"].res_type + '_'
 
-    ctx.obj["crm"].config(attr, value)
+    low = attr + 'low_threshold'
+    high = attr + 'high_threshold'
+    
+    high_thresh = ctx.obj["crm"].get(high)
+    if high_thresh and int(high_thresh) <= int(value):
+        click.echo("Low threshold ({}) must be lower than high threshold ({})".format(value, high_thresh))
+        return
+
+    ctx.obj["crm"].config(low, value)
 
 @route.command()
 @click.argument('value', type=click.INT)
@@ -328,9 +345,17 @@ def high(ctx, value):
     if ctx.obj["crm"].addr_family != None:
         attr += ctx.obj["crm"].addr_family + '_'
 
-    attr += ctx.obj["crm"].res_type + '_' + 'high_threshold'
+    attr += ctx.obj["crm"].res_type + '_'
 
-    ctx.obj["crm"].config(attr, value)
+    low = attr + 'low_threshold'
+    high = attr + 'high_threshold'
+
+    low_thresh = ctx.obj["crm"].get(low)
+    if low_thresh and int(low_thresh) >= int(value):
+        click.echo("High threshold ({}) must be higher than low threshold ({})".format(value, low_thresh))
+        return
+
+    ctx.obj["crm"].config(high, value)
 
 neighbor.add_command(type)
 neighbor.add_command(low)
